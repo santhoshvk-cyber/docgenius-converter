@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, send_file, redirect, url_for, flash
 import os
 import uuid
@@ -8,7 +7,7 @@ import aspose.words as aw
 import logging
 import time
 
-# ========== Configuration ==========
+# ======= Configurations =======
 UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
@@ -16,16 +15,16 @@ ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
-app.secret_key = 'docgenius@2025'
+app.secret_key = 'supersecretkey'  # Used for flashing messages
 
-# ========== Logging ==========
+# ======= Logging Setup =======
 logging.basicConfig(level=logging.INFO)
 
-# ========== Create Directories ==========
+# ======= Ensure folders exist =======
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
-# ========== Helper Functions ==========
+# ======= Helper Functions =======
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -34,12 +33,12 @@ def generate_filename(extension):
 
 def clean_old_files(folder, age_limit=600):
     now = time.time()
-    for f in os.listdir(folder):
-        path = os.path.join(folder, f)
+    for file in os.listdir(folder):
+        path = os.path.join(folder, file)
         if os.path.isfile(path) and now - os.path.getmtime(path) > age_limit:
             os.remove(path)
 
-# ========== Routes ==========
+# ======= Routes =======
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -54,17 +53,20 @@ def convert_file():
         return redirect(url_for('index'))
 
     if not allowed_file(file.filename):
-        flash('Unsupported file type. Only PDF and DOCX allowed.')
+        flash('Invalid file type. Only PDF and DOCX supported.')
         return redirect(url_for('index'))
 
+    # Clean old files
     clean_old_files(UPLOAD_FOLDER)
     clean_old_files(CONVERTED_FOLDER)
 
+    # Save uploaded file
     filename = secure_filename(file.filename)
     ext = filename.rsplit('.', 1)[1].lower()
     input_path = os.path.join(app.config['UPLOAD_FOLDER'], generate_filename(ext))
     file.save(input_path)
 
+    # Prepare output file path
     output_ext = 'pdf' if conversion_type == 'word-to-pdf' else 'docx'
     output_filename = generate_filename(output_ext)
     output_path = os.path.join(app.config['CONVERTED_FOLDER'], output_filename)
@@ -85,7 +87,7 @@ def convert_file():
 
     except Exception as e:
         logging.error(f"Conversion failed: {e}")
-        flash('Conversion failed. Please try again.')
+        flash('An error occurred during conversion.')
         return redirect(url_for('index'))
 
 @app.route('/download/<filename>')
@@ -97,7 +99,7 @@ def download_file(filename):
         flash('File not found or expired.')
         return redirect(url_for('index'))
 
-# ========== Run Server ==========
+# ======= Run App =======
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    port = int(os.environ.get("PORT", 5000))  # Compatible with Render
+    app.run(host="0.0.0.0", port=port)
